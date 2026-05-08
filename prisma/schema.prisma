@@ -1,0 +1,289 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============ ENUMS ============
+enum UserRole {
+  SEARCHER
+  REALTOR
+  ADMIN
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  LAND
+  OFFICE
+  COMMERCIAL
+}
+
+enum PropertyStatus {
+  ACTIVE
+  INACTIVE
+  SOLD
+}
+
+enum SubscriptionPlan {
+  PLAN_20
+  PLAN_50
+  PLAN_100
+}
+
+enum HighlightStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// ============ COUNTRIES & GEOGRAPHY ============
+model Country {
+  id        String   @id @default(cuid())
+  code      String   @unique           // "CO", "US", "MX"
+  name      String
+  currency  String   @default("USD")   // "COP", "USD"
+  language  String   @default("es")    // "es", "en"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  cities     City[]
+  properties Property[]
+  users      User[]
+
+  @@index([code])
+}
+
+model City {
+  id        String   @id @default(cuid())
+  countryId String
+  name      String
+  lat       Float                      // Para búsquedas geo
+  lng       Float
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  country    Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  properties Property[]
+
+  @@unique([countryId, name])
+  @@index([countryId])
+}
+
+// ============ USERS ============
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?   // Null si usan magic link
+  name          String?
+  role          UserRole  @default(SEARCHER)
+  countryId     String?   // País de preferencia (para búsquedas)
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  country        Country?          @relation(fields: [countryId], references: [id])
+  searches       Search[]
+  realtorProfile RealtorProfile?
+  subscription   Subscription?
+  savedSearches  SavedSearch[]
+  apiKeys        APIKey[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model RealtorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  companyName   String
+  companyPhone  String?
+  companyEmail  String?
+  logoUrl       String?
+  websiteUrl    String?
+  description   String?  @db.Text
+  verificationStatus String @default("PENDING") // PENDING, VERIFIED, REJECTED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  properties Property[]
+
+  @@index([userId])
+}
+
+model APIKey {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String   @unique           // hash de la clave real
+  name      String
+  lastUsed  DateTime?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([key])
+}
+
+// ============ SUBSCRIPTIONS ============
+model Subscription {
+  id              String            @id @default(cuid())
+  userId          String            @unique
+  plan            SubscriptionPlan  @default(PLAN_20)
+  propertiesLimit Int               @default(20)     // 20, 50 o 100
+  priceMonthly    Float                               // En USD (convertir según país)
+  stripeCustomerId String?          @unique
+  stripePriceId   String?
+  stripeSubId     String?           @unique
+  status          String            @default("active") // active, cancelled, past_due
+  currentPeriodEnd DateTime
+  renewalDate      DateTime
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices   Invoice[]
+  highlights Highlight[]
+
+  @@index([userId])
+  @@index([stripeCustomerId])
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  subscriptionId  String
+  stripeInvoiceId String   @unique
+  amount          Float    // En USD
+  currency        String   @default("USD")
+  status          String   @default("draft") // draft, open, paid, void, uncollectible
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+}
+
+// ============ PROPERTIES ============
+model Property {
+  id            String          @id @default(cuid())
+  realtorId     String          // Usuario inmobiliaria
+  countryId     String
+  cityId        String
+  title         String
+  description   String          @db.Text
+  price         Float           // En moneda local
+  currency      String          // "COP", "USD", etc
+  type          PropertyType
+  bedrooms      Int
+  bathrooms     Int
+  areaM2        Float
+  floor         Int?            // Piso (null si casa)
+  yearBuilt     Int?
+  services      String[]        // ["pool", "gym", "parking", "security"]
+  directLink    String?         // URL externa a la propiedad
+  photoUrls     String[]        // Máx 6 fotos
+  status        PropertyStatus  @default(ACTIVE)
+  viewCount     Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Índices geo para búsqueda por cercanía (opcional MVP+1)
+  lat           Float?
+  lng           Float?
+
+  realtor       RealtorProfile @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  country       Country        @relation(fields: [countryId], references: [id])
+  city          City           @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  highlights    Highlight[]
+  searchMatches SearchMatch[]
+
+  @@index([realtorId])
+  @@index([cityId])
+  @@index([countryId])
+  @@index([status])
+  @@index([price])
+  @@index([type])
+}
+
+// ============ SEARCHES ============
+model Search {
+  id                String   @id @default(cuid())
+  userId            String?  // Null si búsqueda anónima
+  countryId         String
+  cityId            String?
+  budgetMin         Float?
+  budgetMax         Float?
+  bedrooms          Int?
+  bathrooms         Int?
+  services          String[] // ["pool", "gym"]
+  type              PropertyType?
+  minArea           Float?
+  maxArea           Float?
+  minYear           Int?
+  maxFloor          Int?
+  createdAt         DateTime @default(now())
+
+  user             User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  matches          SearchMatch[]
+  savedSearches    SavedSearch[]
+
+  @@index([userId])
+  @@index([countryId])
+  @@index([createdAt])
+}
+
+model SearchMatch {
+  id          String   @id @default(cuid())
+  searchId    String
+  propertyId  String
+  relevance   Float    @default(1.0)  // Score 0-1
+  clicked     Boolean  @default(false)
+  clickedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  search      Search   @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([searchId, propertyId])
+  @@index([searchId])
+  @@index([propertyId])
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  searchId  String
+  name      String   // "Mi búsqueda en Bogotá"
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  search    Search   @relation(fields: [searchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, searchId])
+  @@index([userId])
+}
+
+// ============ HIGHLIGHTS ============
+model Highlight {
+  id              String           @id @default(cuid())
+  propertyId      String
+  subscriptionId  String
+  costExtra       Float            // $5, $10, etc USD
+  status          HighlightStatus  @default(ACTIVE)
+  activeUntil     DateTime
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  subscription    Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId])
+  @@index([subscriptionId])
+  @@index([activeUntil])
+}
