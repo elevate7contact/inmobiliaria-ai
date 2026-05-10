@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { stripe, PLAN_PRICE_IDS, type PlanKey } from "@/lib/stripe";
+import { getStripe, PLAN_PRICE_IDS, type PlanKey } from "@/lib/stripe";
 
 const BodySchema = z.object({
   plan: z.enum(["PLAN_20", "PLAN_50", "PLAN_100"]),
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
