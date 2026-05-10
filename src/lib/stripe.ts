@@ -10,14 +10,20 @@ declare global {
   var __stripe: Stripe | undefined;
 }
 
-function createStripeClient(): Stripe {
+/**
+ * Lazy getter del cliente Stripe. NO se inicializa hasta la primera invocación.
+ * Esto previene que las páginas que NO usan Stripe (/, /search, etc) crasheen
+ * cuando STRIPE_SECRET_KEY no está configurada en el entorno.
+ */
+export function getStripe(): Stripe {
+  if (globalThis.__stripe) return globalThis.__stripe;
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
     throw new Error(
       "STRIPE_SECRET_KEY no está definida. Configurá la variable de entorno."
     );
   }
-  return new Stripe(secretKey, {
+  globalThis.__stripe = new Stripe(secretKey, {
     apiVersion: "2026-04-22.dahlia",
     typescript: true,
     appInfo: {
@@ -25,10 +31,8 @@ function createStripeClient(): Stripe {
       version: "0.1.0",
     },
   });
+  return globalThis.__stripe;
 }
-
-export const stripe: Stripe =
-  globalThis.__stripe ?? (globalThis.__stripe = createStripeClient());
 
 // Mapeo plan → priceId desde env vars
 export const PLAN_PRICE_IDS: Record<

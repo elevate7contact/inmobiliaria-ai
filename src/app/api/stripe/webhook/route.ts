@@ -12,7 +12,7 @@
 
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { stripe, planFromPriceId, PLAN_METADATA } from "@/lib/stripe";
+import { getStripe, planFromPriceId, PLAN_METADATA } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 // Forzar runtime Node (no Edge) — necesitamos raw body + Prisma + crypto nativo
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    event = getStripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
     console.error("webhook: firma inválida", err);
     return NextResponse.json({ error: "Firma inválida" }, { status: 400 });
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
             ? session.subscription
             : session.subscription?.id;
         if (subId) {
-          const sub = await stripe.subscriptions.retrieve(subId);
+          const sub = await getStripe().subscriptions.retrieve(subId);
           // Inyectar userId desde la session si la subscription no lo tiene en metadata
           if (!sub.metadata?.userId && session.metadata?.userId) {
             (sub.metadata as Record<string, string>) = {
