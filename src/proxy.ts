@@ -5,7 +5,7 @@ const PUBLIC_ROUTES = ["/", "/login", "/signup", "/reset-password"];
 const REALTOR_ROUTES = ["/dashboard", "/properties", "/subscription", "/analytics", "/api-docs"];
 const ADMIN_ROUTES = ["/admin"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
