@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     });
 
     // Enriquecer con datos de las propiedades
-    const propertyIds = leadsPerProperty.map((l) => l.propertyId);
+    const propertyIds = leadsPerProperty.map((l: { propertyId: string }) => l.propertyId);
     const properties = await prisma.property.findMany({
       where: { id: { in: propertyIds } },
       select: { id: true, title: true, viewCount: true, status: true },
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 
     const propertyMap = Object.fromEntries(properties.map((p) => [p.id, p]));
 
-    const leadsData = leadsPerProperty.map((l) => ({
+    const leadsData = leadsPerProperty.map((l: { propertyId: string; _count: { propertyId: number } }) => ({
       propertyId: l.propertyId,
       title: propertyMap[l.propertyId]?.title ?? "Propiedad eliminada",
       leads: l._count.propertyId,
