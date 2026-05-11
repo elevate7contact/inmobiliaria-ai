@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/reset-password"];
+const API_V1_PREFIX = "/api/v1";
 const REALTOR_ROUTES = ["/dashboard", "/properties", "/subscription", "/analytics", "/api-docs"];
 const ADMIN_ROUTES = ["/admin"];
 
@@ -34,6 +35,11 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+
+  // API v1 — autenticada por API key, no por sesión
+  if (pathname.startsWith(API_V1_PREFIX)) {
+    return supabaseResponse;
+  }
 
   // Rutas públicas — siempre accesibles
   if (PUBLIC_ROUTES.some((r) => pathname === r)) {
