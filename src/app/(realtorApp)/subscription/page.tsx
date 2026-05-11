@@ -1,6 +1,6 @@
 // src/app/(realtorApp)/subscription/page.tsx
 // Server component: muestra el estado de suscripción del realtor logueado.
-// - Sin sub: 3 cards de pricing (PLAN_20, PLAN_50, PLAN_100, este último MOST POPULAR).
+// - Sin sub: 3 cards de pricing (STARTER, GROWTH, EMPIRE, este último MOST POPULAR).
 // - Con sub: detalles + botón "Gestionar suscripción" (abre Stripe Customer Portal).
 
 import { createClient } from "@/lib/supabase/server";
@@ -81,7 +81,7 @@ export default async function SubscriptionPage({
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-semibold text-gray-900">
-                  Plan {subscription.plan.replace("PLAN_", "")} propiedades
+                  Plan {subscription.plan.charAt(0) + subscription.plan.slice(1).toLowerCase()}
                 </h2>
                 {(() => {
                   const b =

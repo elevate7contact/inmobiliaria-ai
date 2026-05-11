@@ -68,7 +68,7 @@ async function upsertSubscriptionFromStripe(sub: Stripe.Subscription) {
 
   const item = sub.items.data[0];
   const priceId = item?.price.id;
-  const planKey = planFromPriceId(priceId) ?? "PLAN_20";
+  const planKey = planFromPriceId(priceId) ?? "STARTER";
   const meta = PLAN_METADATA[planKey];
   const periodEnd = periodEndFromSub(sub);
   const customerId =

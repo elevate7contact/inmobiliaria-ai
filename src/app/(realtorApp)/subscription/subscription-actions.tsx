@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 
-type PlanKey = "PLAN_20" | "PLAN_50" | "PLAN_100";
+type PlanKey = "STARTER" | "GROWTH" | "EMPIRE";
 
 const PLANS: Array<{
   key: PlanKey;
@@ -18,7 +18,7 @@ const PLANS: Array<{
   popular?: boolean;
 }> = [
   {
-    key: "PLAN_20",
+    key: "STARTER",
     name: "Starter",
     price: 29,
     limit: 20,
@@ -29,9 +29,9 @@ const PLANS: Array<{
     ],
   },
   {
-    key: "PLAN_50",
+    key: "GROWTH",
     name: "Growth",
-    price: 49,
+    price: 60,
     limit: 50,
     perks: [
       "Hasta 50 propiedades activas",
@@ -40,9 +40,9 @@ const PLANS: Array<{
     ],
   },
   {
-    key: "PLAN_100",
-    name: "Pro",
-    price: 79,
+    key: "EMPIRE",
+    name: "Empire",
+    price: 120,
     limit: 100,
     perks: [
       "Hasta 100 propiedades activas",
