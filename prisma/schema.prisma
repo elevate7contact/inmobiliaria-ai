@@ -28,9 +28,9 @@ enum PropertyStatus {
 }
 
 enum SubscriptionPlan {
-  PLAN_20
-  PLAN_50
-  PLAN_100
+  STARTER
+  GROWTH
+  EMPIRE
 }
 
 enum HighlightStatus {
@@ -133,7 +133,7 @@ model APIKey {
 model Subscription {
   id              String            @id @default(cuid())
   userId          String            @unique
-  plan            SubscriptionPlan  @default(PLAN_20)
+  plan            SubscriptionPlan  @default(STARTER)
   propertiesLimit Int               @default(20)     // 20, 50 o 100
   priceMonthly    Float                               // En USD (convertir según país)
   stripeCustomerId String?          @unique

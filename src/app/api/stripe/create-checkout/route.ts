@@ -1,6 +1,6 @@
 // src/app/api/stripe/create-checkout/route.ts
 // POST: crea una Stripe Checkout Session en modo `subscription` para el realtor logueado.
-// Body esperado: { plan: 'PLAN_20' | 'PLAN_50' | 'PLAN_100' }.
+// Body esperado: { plan: 'STARTER' | 'GROWTH' | 'EMPIRE' }.
 // Devuelve: { url } con la URL hosted-checkout de Stripe.
 
 import { NextResponse } from "next/server";
@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { getStripe, PLAN_PRICE_IDS, type PlanKey } from "@/lib/stripe";
 
 const BodySchema = z.object({
-  plan: z.enum(["PLAN_20", "PLAN_50", "PLAN_100"]),
+  plan: z.enum(["STARTER", "GROWTH", "EMPIRE"]),
 });
 
 export async function POST(request: Request) {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const priceId = PLAN_PRICE_IDS[plan];
     if (!priceId) {
       return NextResponse.json(
-        { error: `Plan ${plan} no configurado (falta STRIPE_PRICE_${plan})` },
+        { error: `Plan ${plan} no configurado (falta STRIPE_PRICE_${plan} en env vars)` },
         { status: 500 }
       );
     }

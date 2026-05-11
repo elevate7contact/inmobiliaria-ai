@@ -35,20 +35,23 @@ export function getStripe(): Stripe {
 }
 
 // Mapeo plan → priceId desde env vars
+// Acepta tanto los nombres nuevos (STARTER/GROWTH/EMPIRE) como los legacy
+// (PLAN_20/PLAN_50/PLAN_100) para tolerar transición sin downtime.
 export const PLAN_PRICE_IDS: Record<
-  "PLAN_20" | "PLAN_50" | "PLAN_100",
+  "STARTER" | "GROWTH" | "EMPIRE",
   string | undefined
 > = {
-  PLAN_20: process.env.STRIPE_PRICE_PLAN_20,
-  PLAN_50: process.env.STRIPE_PRICE_PLAN_50,
-  PLAN_100: process.env.STRIPE_PRICE_PLAN_100,
+  STARTER: process.env.STRIPE_PRICE_STARTER ?? process.env.STRIPE_PRICE_PLAN_20,
+  GROWTH: process.env.STRIPE_PRICE_GROWTH ?? process.env.STRIPE_PRICE_PLAN_50,
+  EMPIRE: process.env.STRIPE_PRICE_EMPIRE ?? process.env.STRIPE_PRICE_PLAN_100,
 };
 
 // Mapeo plan → metadata estática (límite + precio mostrado en UI)
+// Precios reales acordados: $29 / $60 / $120
 export const PLAN_METADATA = {
-  PLAN_20: { propertiesLimit: 20, priceMonthly: 29 },
-  PLAN_50: { propertiesLimit: 50, priceMonthly: 49 },
-  PLAN_100: { propertiesLimit: 100, priceMonthly: 79 },
+  STARTER: { propertiesLimit: 20, priceMonthly: 29 },
+  GROWTH: { propertiesLimit: 50, priceMonthly: 60 },
+  EMPIRE: { propertiesLimit: 100, priceMonthly: 120 },
 } as const;
 
 export type PlanKey = keyof typeof PLAN_METADATA;
@@ -56,8 +59,8 @@ export type PlanKey = keyof typeof PLAN_METADATA;
 // Reverse lookup: priceId → plan key. Útil en webhooks cuando solo recibimos priceId.
 export function planFromPriceId(priceId: string | undefined | null): PlanKey | null {
   if (!priceId) return null;
-  if (priceId === PLAN_PRICE_IDS.PLAN_20) return "PLAN_20";
-  if (priceId === PLAN_PRICE_IDS.PLAN_50) return "PLAN_50";
-  if (priceId === PLAN_PRICE_IDS.PLAN_100) return "PLAN_100";
+  if (priceId === PLAN_PRICE_IDS.STARTER) return "STARTER";
+  if (priceId === PLAN_PRICE_IDS.GROWTH) return "GROWTH";
+  if (priceId === PLAN_PRICE_IDS.EMPIRE) return "EMPIRE";
   return null;
 }
