@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import PropertyTable, {
   type PropertyRow,
 } from "@/components/realtor/PropertyTable";
+import CsvActions from "@/components/realtor/CsvActions";
 
 export const dynamic = "force-dynamic";
 
@@ -95,12 +96,15 @@ export default async function PropertiesPage({
             {total} {total === 1 ? "propiedad" : "propiedades"}
           </p>
         </div>
-        <Link
-          href="/properties/new"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          + Nueva propiedad
-        </Link>
+        <div className="flex items-center gap-2">
+          <CsvActions />
+          <Link
+            href="/properties/new"
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva propiedad
+          </Link>
+        </div>
       </header>
 
       <form
