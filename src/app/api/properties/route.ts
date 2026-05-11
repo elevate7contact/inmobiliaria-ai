@@ -35,8 +35,11 @@ const CreatePropertySchema = z.object({
   floor: z.number().int().optional(),
   yearBuilt: z.number().int().optional(),
   services: z.array(z.string()).optional(),
-  directLink: z.string().url().optional(),
+  directLink: z.string().url().optional().or(z.literal("")),
   photoUrls: z.array(z.string().url()).max(6).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });
 
 async function requireRealtor() {
@@ -85,18 +88,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const activeCount = await prisma.property.count({
-      where: { realtorId: realtor.id, status: "ACTIVE" },
-    });
-    if (activeCount >= subscription.propertiesLimit) {
-      return NextResponse.json(
-        {
-          error: `Alcanzaste el límite de ${subscription.propertiesLimit} propiedades de tu plan. Hacé upgrade para publicar más.`,
-        },
-        { status: 403 }
-      );
-    }
-
     const json = await request.json();
     const parsed = CreatePropertySchema.safeParse(json);
     if (!parsed.success) {
@@ -106,6 +97,21 @@ export async function POST(request: Request) {
       );
     }
     const data = parsed.data;
+
+    // Solo enforzar límite si se publica como ACTIVE (los borradores no cuentan)
+    if ((data.status ?? "ACTIVE") === "ACTIVE") {
+      const activeCount = await prisma.property.count({
+        where: { realtorId: realtor.id, status: "ACTIVE" },
+      });
+      if (activeCount >= subscription.propertiesLimit) {
+        return NextResponse.json(
+          {
+            error: `Alcanzaste el límite de ${subscription.propertiesLimit} propiedades de tu plan. Hacé upgrade para publicar más.`,
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     const property = await prisma.property.create({
       data: {
@@ -123,8 +129,11 @@ export async function POST(request: Request) {
         floor: data.floor,
         yearBuilt: data.yearBuilt,
         services: data.services ?? [],
-        directLink: data.directLink,
+        directLink: data.directLink || null,
         photoUrls: data.photoUrls ?? [],
+        lat: data.lat,
+        lng: data.lng,
+        status: data.status ?? "ACTIVE",
       },
     });
 
