@@ -19,6 +19,8 @@ export type PropertyRow = {
   status: "ACTIVE" | "INACTIVE" | "SOLD";
   viewCount: number;
   photoUrls: string[];
+  highlightId?: string | null;
+  highlightUntil?: string | null;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -35,6 +37,7 @@ export default function PropertyTable({
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [highlightBusy, setHighlightBusy] = useState<string | null>(null);
 
   const toggleStatus = async (p: PropertyRow) => {
     const nextStatus = p.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
@@ -55,6 +58,37 @@ export default function PropertyTable({
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const toggleHighlight = async (p: PropertyRow) => {
+    setHighlightBusy(p.id);
+    setError(null);
+    try {
+      if (p.highlightId) {
+        // Desactivar highlight
+        const res = await fetch(`/api/highlights/${p.highlightId}`, { method: "DELETE" });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Error eliminando highlight");
+        }
+      } else {
+        // Crear highlight
+        const res = await fetch("/api/highlights", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ propertyId: p.id }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Error activando highlight");
+        }
+      }
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setHighlightBusy(null);
     }
   };
 
@@ -110,6 +144,7 @@ export default function PropertyTable({
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">H/B</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Estado</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Vistas</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Destacada</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Acciones</th>
             </tr>
           </thead>
@@ -142,6 +177,15 @@ export default function PropertyTable({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">{p.viewCount}</td>
+                <td className="px-4 py-3">
+                  {p.highlightId ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+                      ⭐ Activa
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right text-sm">
                   <div className="flex justify-end gap-2">
                     <Link
@@ -150,6 +194,24 @@ export default function PropertyTable({
                     >
                       Editar
                     </Link>
+                    {p.status === "ACTIVE" && (
+                      <button
+                        type="button"
+                        disabled={highlightBusy === p.id}
+                        onClick={() => toggleHighlight(p)}
+                        className={`rounded border px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${
+                          p.highlightId
+                            ? "border-amber-300 text-amber-700 hover:bg-amber-50"
+                            : "border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                        }`}
+                      >
+                        {highlightBusy === p.id
+                          ? "..."
+                          : p.highlightId
+                          ? "Quitar destaque"
+                          : "⭐ Destacar"}
+                      </button>
+                    )}
                     {p.status !== "SOLD" && (
                       <button
                         type="button"
@@ -214,6 +276,20 @@ export default function PropertyTable({
               >
                 Editar
               </Link>
+              {p.status === "ACTIVE" && (
+                <button
+                  type="button"
+                  disabled={highlightBusy === p.id}
+                  onClick={() => toggleHighlight(p)}
+                  className={`rounded border px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${
+                    p.highlightId
+                      ? "border-amber-300 text-amber-700"
+                      : "border-indigo-300 text-indigo-700"
+                  }`}
+                >
+                  {highlightBusy === p.id ? "..." : p.highlightId ? "Quitar destaque" : "⭐ Destacar"}
+                </button>
+              )}
               {p.status !== "SOLD" && (
                 <button
                   type="button"

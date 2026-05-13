@@ -52,7 +52,8 @@ export default async function PropertiesPage({
         : {}),
     };
 
-    [total, properties] = await Promise.all([
+    const now = new Date();
+    const [count, rows] = await Promise.all([
       prisma.property.count({ where }),
       prisma.property.findMany({
         where,
@@ -70,9 +71,29 @@ export default async function PropertiesPage({
           status: true,
           viewCount: true,
           photoUrls: true,
+          highlights: {
+            where: { status: "ACTIVE", activeUntil: { gt: now } },
+            select: { id: true, activeUntil: true },
+          },
         },
       }),
     ]);
+
+    total = count;
+    properties = rows.map((p) => ({
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      price: p.price,
+      currency: p.currency,
+      bedrooms: p.bedrooms,
+      bathrooms: p.bathrooms,
+      status: p.status,
+      viewCount: p.viewCount,
+      photoUrls: p.photoUrls,
+      highlightId: p.highlights[0]?.id ?? null,
+      highlightUntil: p.highlights[0]?.activeUntil?.toISOString() ?? null,
+    }));
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
