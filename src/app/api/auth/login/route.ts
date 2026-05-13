@@ -32,16 +32,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Supabase SSR ya setea la sesión en cookies httpOnly automáticamente.
+    // NO exponer access_token en el body — es vulnerable a XSS si el cliente lo guarda.
     return NextResponse.json({
       user: {
         id: data.user.id,
         email: data.user.email,
         role: data.user.user_metadata?.role ?? "SEARCHER",
         name: data.user.user_metadata?.name ?? null,
-      },
-      session: {
-        access_token: data.session?.access_token,
-        expires_at: data.session?.expires_at,
       },
     });
   } catch {

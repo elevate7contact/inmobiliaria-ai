@@ -11,6 +11,7 @@ async function requireAdmin() {
 }
 
 export async function GET() {
+  try {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
@@ -48,4 +49,8 @@ export async function GET() {
     pendingRealtors,
     recentUsers,
   });
+  } catch (err) {
+    console.error("GET /api/admin/stats error:", err);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
 }

@@ -17,14 +17,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
     }
 
-    // Timeframe desde query param: 7, 30, o "all"
+    // Timeframe desde query param: "7", "30", "90" o "all"
     const { searchParams } = new URL(request.url);
-    const range = searchParams.get("range") ?? "30";
+    const rangeRaw = searchParams.get("range") ?? "30";
+    const VALID_RANGES = ["7", "30", "90", "all"] as const;
+    const range = (VALID_RANGES as readonly string[]).includes(rangeRaw) ? rangeRaw : "30";
 
     const since =
       range === "all"
         ? new Date("2020-01-01")
-        : new Date(Date.now() - parseInt(range) * 24 * 60 * 60 * 1000);
+        : new Date(Date.now() - Number(range) * 24 * 60 * 60 * 1000);
 
     // Obtener el perfil del realtor
     const realtorProfile = await prisma.realtorProfile.findUnique({

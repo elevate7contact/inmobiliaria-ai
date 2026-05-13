@@ -34,6 +34,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
+    // Verificar que la búsqueda existe (evitar referencias huérfanas)
+    const searchExists = await prisma.search.findUnique({
+      where: { id: parsed.data.searchId },
+      select: { id: true },
+    });
+    if (!searchExists) {
+      return NextResponse.json({ error: "Búsqueda no encontrada" }, { status: 404 });
+    }
+
     const saved = await prisma.savedSearch.upsert({
       where: {
         userId_searchId: { userId: auth.user.id, searchId: parsed.data.searchId },

@@ -26,7 +26,7 @@ export async function GET() {
         status: true,
         currentPeriodEnd: true,
         renewalDate: true,
-        stripeCustomerId: true,
+        // stripeCustomerId es datos internos de Stripe — no exponer al cliente
       },
     });
 

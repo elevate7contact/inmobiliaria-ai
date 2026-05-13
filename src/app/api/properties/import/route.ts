@@ -5,6 +5,8 @@ import { parseCSV } from "@/lib/csv";
 
 const VALID_TYPES = ["APARTMENT", "HOUSE", "LAND", "OFFICE", "COMMERCIAL"];
 const VALID_STATUSES = ["ACTIVE", "INACTIVE", "SOLD"];
+const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
+const MAX_ROWS = 500;
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -27,9 +29,24 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "No se recibió archivo" }, { status: 400 });
 
+  // Validar tamaño antes de leer en memoria
+  if (file.size > MAX_FILE_BYTES) {
+    return NextResponse.json(
+      { error: `El archivo excede el límite de ${MAX_FILE_BYTES / 1024 / 1024} MB` },
+      { status: 400 }
+    );
+  }
+
   const text = await file.text();
   const rows = parseCSV(text);
   if (rows.length === 0) return NextResponse.json({ error: "CSV vacío o sin filas" }, { status: 400 });
+
+  if (rows.length > MAX_ROWS) {
+    return NextResponse.json(
+      { error: `Máximo ${MAX_ROWS} filas por importación (recibidas: ${rows.length})` },
+      { status: 400 }
+    );
+  }
 
   // Cargar países y ciudades para lookup
   const countries = await prisma.country.findMany({ include: { cities: true } });
