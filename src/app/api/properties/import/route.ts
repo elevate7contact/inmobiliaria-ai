@@ -1,37 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { parseCSV } from "@/lib/csv";
 
 const VALID_TYPES = ["APARTMENT", "HOUSE", "LAND", "OFFICE", "COMMERCIAL"];
 const VALID_STATUSES = ["ACTIVE", "INACTIVE", "SOLD"];
-
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""));
-
-  return lines.slice(1).map((line) => {
-    // Parse respetando campos entre comillas
-    const values: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        inQuotes = !inQuotes;
-      } else if (ch === "," && !inQuotes) {
-        values.push(current.trim());
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-    values.push(current.trim());
-
-    return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""]));
-  });
-}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
