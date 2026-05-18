@@ -253,6 +253,16 @@ export function ChatWidget() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <a
+                  href="/preferences"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  title="Ver lo que Vistaagent sabe de mí"
+                  aria-label="Preferencias"
+                >
+                  <span className="text-base leading-none">⚙️</span>
+                </a>
                 <button
                   onClick={reset}
                   className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"

@@ -33,6 +33,9 @@ export default async function SearcherLayout({
             <Link href="/saved" className="text-gray-700 hover:text-indigo-600">
               Guardadas
             </Link>
+            <Link href="/preferences" className="text-gray-700 hover:text-indigo-600">
+              Preferencias
+            </Link>
             <span className="hidden text-xs text-gray-500 sm:inline">
               {user.email}
             </span>
