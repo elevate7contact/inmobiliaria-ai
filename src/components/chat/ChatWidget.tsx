@@ -194,6 +194,21 @@ export function ChatWidget() {
     setStreaming(false);
   };
 
+  const closeDrawer = useCallback(() => {
+    abortRef.current?.abort();
+    setOpen(false);
+  }, []);
+
+  // Escape para cerrar el drawer
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDrawer();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, closeDrawer]);
+
   return (
     <>
       {/* Floating button */}
@@ -220,7 +235,7 @@ export function ChatWidget() {
         <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
           <button
             aria-label="Cerrar"
-            onClick={() => setOpen(false)}
+            onClick={closeDrawer}
             className="flex-1 bg-black/30 backdrop-blur-sm"
           />
           <div className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
@@ -254,7 +269,7 @@ export function ChatWidget() {
                   </svg>
                 </button>
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                   aria-label="Cerrar"
                 >

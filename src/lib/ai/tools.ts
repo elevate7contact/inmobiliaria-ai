@@ -113,13 +113,17 @@ export async function searchProperties(input: SearchInput) {
     const city = await prisma.city.findFirst({ where: { name: { equals: input.cityName, mode: "insensitive" } } });
     if (city) where.cityId = city.id;
   }
-  if (input.budgetMin != null) where.price = { ...(where.price as object), gte: input.budgetMin };
-  if (input.budgetMax != null) where.price = { ...(where.price as object), lte: input.budgetMax };
+  const priceFilter: Prisma.FloatFilter = {};
+  if (input.budgetMin != null) priceFilter.gte = input.budgetMin;
+  if (input.budgetMax != null) priceFilter.lte = input.budgetMax;
+  if (Object.keys(priceFilter).length) where.price = priceFilter;
   if (input.currency) where.currency = input.currency;
   if (input.minBedrooms != null) where.bedrooms = { gte: input.minBedrooms };
   if (input.minBathrooms != null) where.bathrooms = { gte: input.minBathrooms };
-  if (input.minAreaM2 != null) where.areaM2 = { ...(where.areaM2 as object), gte: input.minAreaM2 };
-  if (input.maxAreaM2 != null) where.areaM2 = { ...(where.areaM2 as object), lte: input.maxAreaM2 };
+  const areaFilter: Prisma.FloatFilter = {};
+  if (input.minAreaM2 != null) areaFilter.gte = input.minAreaM2;
+  if (input.maxAreaM2 != null) areaFilter.lte = input.maxAreaM2;
+  if (Object.keys(areaFilter).length) where.areaM2 = areaFilter;
   if (input.propertyType) where.type = input.propertyType as Prisma.PropertyWhereInput["type"];
   if (input.services && input.services.length) where.services = { hasEvery: input.services };
 
