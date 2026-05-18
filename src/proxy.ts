@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/reset-password", "/update-password"];
 const API_V1_PREFIX = "/api/v1";
+const PUBLIC_API_PREFIX = "/api/auth"; // login, logout, forgot-password — sin sesión requerida
 const REALTOR_ROUTES = ["/dashboard", "/properties", "/subscription", "/analytics", "/api-docs"];
 const ADMIN_ROUTES = ["/admin"];
 
@@ -38,6 +39,11 @@ export async function proxy(request: NextRequest) {
 
   // API v1 — autenticada por API key, no por sesión
   if (pathname.startsWith(API_V1_PREFIX)) {
+    return supabaseResponse;
+  }
+
+  // API de auth — pública (login, logout, forgot-password, etc.)
+  if (pathname.startsWith(PUBLIC_API_PREFIX)) {
     return supabaseResponse;
   }
 
