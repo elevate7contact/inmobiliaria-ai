@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
 
     setLoading(false);
     if (supabaseError) {
-      setError("Error al enviar el email. Intenta de nuevo.");
+      setError(`Error: ${supabaseError.message} (${supabaseError.status ?? "sin código"})`);
       return;
     }
     setSent(true);
