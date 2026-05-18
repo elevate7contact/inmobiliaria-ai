@@ -172,6 +172,7 @@ model ChatConversation {
   id        String   @id @default(cuid())
   userId    String? // null si visitante anónimo
   sessionId String // cookie/UUID del browser para anónimos
+  clientIp  String? // IP del cliente (x-forwarded-for) para rate limiting
   title     String? // generado por el modelo después del 3er mensaje
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,6 +183,7 @@ model ChatConversation {
   @@index([userId])
   @@index([sessionId])
   @@index([createdAt])
+  @@index([clientIp, createdAt])
 }
 
 model ChatMessage {

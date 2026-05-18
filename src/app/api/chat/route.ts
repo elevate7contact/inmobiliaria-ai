@@ -9,6 +9,7 @@ import { SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import { TOOL_DEFINITIONS, executeTool } from "@/lib/ai/tools";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { checkChatRateLimit } from "@/lib/rate-limit";
 import type Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,43 @@ type ChatRequest = {
   message: string;
 };
 
+// Extrae el primer IP del header x-forwarded-for
+function getClientIp(req: NextRequest): string | null {
+  const xff = req.headers.get("x-forwarded-for");
+  if (!xff) return null;
+  const first = xff.split(",")[0]?.trim();
+  return first || null;
+}
+
+// Detecta status HTTP de un error del SDK Anthropic.
+function getAnthropicStatus(err: unknown): number | null {
+  if (!err || typeof err !== "object") return null;
+  const e = err as { status?: unknown; error?: { type?: unknown } };
+  if (typeof e.status === "number") return e.status;
+  // Fallback: shape err.error.type
+  const t = e.error?.type;
+  if (t === "overloaded_error") return 529;
+  if (t === "rate_limit_error") return 429;
+  if (t === "authentication_error") return 401;
+  return null;
+}
+
+// Llama anthropic.messages.create con retry para 529/429.
+async function callAnthropicWithRetry(
+  params: Anthropic.MessageCreateParamsNonStreaming
+): Promise<Anthropic.Message> {
+  try {
+    return await anthropic.messages.create(params);
+  } catch (err) {
+    const status = getAnthropicStatus(err);
+    if (status === 529 || status === 429) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return await anthropic.messages.create(params);
+    }
+    throw err;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as ChatRequest;
@@ -34,21 +72,64 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: "sessionId requerido" }), { status: 400 });
     }
 
+    const clientIp = getClientIp(req);
+
+    // Rate limit antes de gastar tokens
+    const rl = await checkChatRateLimit({ sessionId: body.sessionId, clientIp });
+    if (!rl.ok) {
+      return new Response(
+        JSON.stringify({ error: "Demasiados mensajes, esperá un momento." }),
+        { status: 429 }
+      );
+    }
+
     // Identificar al usuario si está logueado
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id ?? null;
 
-    // Buscar o crear conversación
+    // Buscar o crear conversación, con ownership check
     let conversation;
     if (body.conversationId) {
-      conversation = await prisma.chatConversation.findUnique({
+      const found = await prisma.chatConversation.findUnique({
         where: { id: body.conversationId },
       });
+      if (found) {
+        // Validar ownership
+        if (found.userId) {
+          // Conversación de usuario logueado: debe matchear el userId actual
+          if (userId && found.userId === userId) {
+            conversation = found;
+          } else {
+            console.warn(
+              "[chat] ownership mismatch (userId): conversation",
+              found.id,
+              "owned by",
+              found.userId,
+              "but request from",
+              userId
+            );
+          }
+        } else {
+          // Conversación anónima: debe matchear el sessionId
+          if (found.sessionId === body.sessionId) {
+            conversation = found;
+          } else {
+            console.warn(
+              "[chat] ownership mismatch (sessionId): conversation",
+              found.id,
+              "owned by session",
+              found.sessionId,
+              "but request from",
+              body.sessionId
+            );
+          }
+        }
+      }
     }
     if (!conversation) {
       conversation = await prisma.chatConversation.create({
-        data: { sessionId: body.sessionId, userId },
+        data: { sessionId: body.sessionId, userId, clientIp },
       });
     }
 
@@ -118,13 +199,34 @@ export async function POST(req: NextRequest) {
           let totalTokensOut = 0;
 
           for (let loop = 0; loop < MAX_TOOL_LOOPS; loop++) {
-            const response = await anthropic.messages.create({
-              model: MODEL,
-              max_tokens: MAX_TOKENS,
-              system: SYSTEM_PROMPT + userContext,
-              tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
-              messages,
-            });
+            let response: Anthropic.Message;
+            try {
+              response = await callAnthropicWithRetry({
+                model: MODEL,
+                max_tokens: MAX_TOKENS,
+                system: SYSTEM_PROMPT + userContext,
+                tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
+                messages,
+              });
+            } catch (err) {
+              const status = getAnthropicStatus(err);
+              if (status === 529 || status === 429) {
+                send({
+                  type: "error",
+                  message: "El asistente está saturado. Intentá en un momento.",
+                });
+                return;
+              }
+              if (status === 401) {
+                console.error("[chat][AUTH] Anthropic auth error");
+                send({
+                  type: "error",
+                  message: "Configuración del asistente no disponible.",
+                });
+                return;
+              }
+              throw err;
+            }
 
             totalTokensIn += response.usage.input_tokens;
             totalTokensOut += response.usage.output_tokens;

@@ -193,15 +193,63 @@ export async function getPropertyDetails(propertyId: string) {
 
 type PreferenceInput = { field: string; value: unknown };
 
+const ALLOWED_FIELDS = new Set([
+  "budgetMin", "budgetMax", "currency", "cityName", "neighborhoods",
+  "minBedrooms", "minBathrooms", "minAreaM2", "maxAreaM2",
+  "propertyTypes", "services", "features",
+  "preferFloorMin", "preferFloorMax", "freeNotes",
+]);
+
+const NUMERIC_FIELDS = new Set([
+  "budgetMin", "budgetMax",
+  "minBedrooms", "minBathrooms", "minAreaM2", "maxAreaM2",
+  "preferFloorMin", "preferFloorMax",
+]);
+
+const STRING_FIELDS = new Set(["currency", "freeNotes"]);
+
+const STRING_ARRAY_FIELDS = new Set([
+  "neighborhoods", "propertyTypes", "services", "features",
+]);
+
+const FREENOTES_MAX_LEN = 1000;
+
 export async function saveUserPreference(userId: string | null, input: PreferenceInput) {
   if (!userId) {
     // Visitante anónimo: no persistimos en DB. La conversación misma es el contexto.
     return { saved: false, reason: "anonymous_session" };
   }
 
-  const updateData: Record<string, unknown> = {};
   const f = input.field;
-  const v = input.value;
+  let v = input.value;
+
+  if (!ALLOWED_FIELDS.has(f)) {
+    return { saved: false, reason: "field_not_allowed" };
+  }
+
+  // Validación de tipos
+  if (NUMERIC_FIELDS.has(f)) {
+    if (typeof v !== "number" || !Number.isFinite(v)) {
+      return { saved: false, reason: "type_mismatch" };
+    }
+  } else if (STRING_ARRAY_FIELDS.has(f)) {
+    if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) {
+      return { saved: false, reason: "type_mismatch" };
+    }
+  } else if (f === "cityName") {
+    if (typeof v !== "string") {
+      return { saved: false, reason: "type_mismatch" };
+    }
+  } else if (STRING_FIELDS.has(f)) {
+    if (typeof v !== "string") {
+      return { saved: false, reason: "type_mismatch" };
+    }
+    if (f === "freeNotes" && v.length > FREENOTES_MAX_LEN) {
+      v = v.slice(0, FREENOTES_MAX_LEN);
+    }
+  }
+
+  const updateData: Record<string, unknown> = {};
 
   // Resolver cityName → cityId
   if (f === "cityName" && typeof v === "string") {
