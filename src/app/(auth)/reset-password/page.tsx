@@ -3,14 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/client";
 
 const schema = z.object({
   email: z.string().email("Email inválido"),
 });
 
 export default function ResetPasswordPage() {
-  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -27,17 +25,24 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(
-      email,
-      { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/update-password` }
-    );
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: result.data.email }),
+      });
 
-    setLoading(false);
-    if (supabaseError) {
-      setError(`Error: ${supabaseError.message} (${supabaseError.status ?? "sin código"})`);
-      return;
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Error al enviar el email. Intenta de nuevo.");
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
     }
-    setSent(true);
   };
 
   if (sent) {
