@@ -83,10 +83,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Identificar al usuario si está logueado
+    // Auth + role gate: solo usuarios SEARCHER autenticados
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id ?? null;
+    if (!user) {
+      return new Response(
+        JSON.stringify({ error: "Iniciá sesión para usar Vistaagent." }),
+        { status: 401 }
+      );
+    }
+    const role = (user.user_metadata?.role as string | undefined) ?? "SEARCHER";
+    if (role !== "SEARCHER") {
+      return new Response(
+        JSON.stringify({ error: "Vistaagent está disponible solo para buscadores." }),
+        { status: 403 }
+      );
+    }
+    const userId: string = user.id;
 
     // Buscar o crear conversación, con ownership check
     let conversation;

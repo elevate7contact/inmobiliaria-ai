@@ -12,8 +12,8 @@ type Msg =
   | { id: string; role: "tool"; name: string };
 
 const STORAGE_KEYS = {
-  sessionId: "athora_chat_session_id",
-  conversationId: "athora_chat_conversation_id",
+  sessionId: "vistaagent_session_id",
+  conversationId: "vistaagent_conversation_id",
 };
 
 function getOrCreateSessionId(): string {
@@ -45,7 +45,7 @@ export function ChatWidget() {
       {
         id: "greet",
         role: "assistant",
-        text: "Hola, soy Athora Casa. ¿En qué ciudad estás buscando y para qué tipo de plan?",
+        text: "Hola, soy Vistaagent. ¿En qué ciudad estás buscando y qué tipo de propiedad?",
       },
     ]);
   }, [open, messages.length]);
@@ -217,7 +217,7 @@ export function ChatWidget() {
         className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-orange-500 px-5 py-3 text-white shadow-lg shadow-orange-500/40 transition hover:scale-105 hover:bg-orange-600 ${
           open ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
-        aria-label="Abrir asistente"
+        aria-label="Abrir Vistaagent"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -227,7 +227,7 @@ export function ChatWidget() {
             d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
           />
         </svg>
-        <span className="text-sm font-medium">Athora Casa</span>
+        <span className="text-sm font-medium">Vistaagent</span>
       </button>
 
       {/* Drawer */}
@@ -243,10 +243,10 @@ export function ChatWidget() {
             <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">
-                  A
+                  V
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">Athora Casa</div>
+                  <div className="text-sm font-semibold text-gray-900">Vistaagent</div>
                   <div className="text-xs text-gray-500">
                     {streaming ? "escribiendo…" : "asistente de búsqueda"}
                   </div>
