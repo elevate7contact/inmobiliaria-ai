@@ -4,6 +4,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import {
+  sendVerificationApproved,
+  sendVerificationRejected,
+} from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +57,15 @@ export async function POST(
         where: { realtorId: id },
         data: { reviewedBy: admin.id, reviewedAt: now, rejectionReason: null },
       });
-      console.log(
-        `[verify] Email APPROVE → ${realtor.user.email} (${realtor.companyName})`
-      );
+      try {
+        await sendVerificationApproved({
+          to: realtor.user.email,
+          name: realtor.user.name ?? "",
+          companyName: realtor.companyName,
+        });
+      } catch (e) {
+        console.error("[verify] sendVerificationApproved failed:", e);
+      }
       return NextResponse.json({ realtor: updated });
     }
 
@@ -81,9 +91,16 @@ export async function POST(
           rejectionReason: reason.trim(),
         },
       });
-      console.log(
-        `[verify] Email REJECT → ${realtor.user.email} (${realtor.companyName}): ${reason}`
-      );
+      try {
+        await sendVerificationRejected({
+          to: realtor.user.email,
+          name: realtor.user.name ?? "",
+          companyName: realtor.companyName,
+          reason: reason.trim(),
+        });
+      } catch (e) {
+        console.error("[verify] sendVerificationRejected failed:", e);
+      }
       return NextResponse.json({ realtor: updated });
     }
 
