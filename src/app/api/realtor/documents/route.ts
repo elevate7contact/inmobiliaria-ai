@@ -10,6 +10,7 @@ import {
   REALTOR_DOCS_BUCKET,
   type DocumentTypeKey,
 } from "@/lib/verification";
+import { sendDocsReceivedToAdmin } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -65,11 +66,17 @@ export async function POST(req: NextRequest) {
 
     const realtor = await prisma.realtorProfile.findUnique({
       where: { userId: user.id },
-      select: { id: true, verificationStatus: true },
+      select: {
+        id: true,
+        verificationStatus: true,
+        companyName: true,
+        companyPhone: true,
+      },
     });
     if (!realtor) {
       return NextResponse.json({ error: "No tenés perfil de inmobiliaria" }, { status: 404 });
     }
+    const prevStatus = realtor.verificationStatus;
 
     // Si ya hay doc del mismo tipo, borrar archivo viejo de Storage.
     const existing = await prisma.realtorDocument.findUnique({
@@ -112,11 +119,27 @@ export async function POST(req: NextRequest) {
     const count = await prisma.realtorDocument.count({
       where: { realtorId: realtor.id },
     });
+    let newStatus = prevStatus;
     if (count >= DOCUMENT_TYPES.length && realtor.verificationStatus !== "VERIFIED") {
       await prisma.realtorProfile.update({
         where: { id: realtor.id },
         data: { verificationStatus: "UNDER_REVIEW", rejectionReason: null },
       });
+      newStatus = "UNDER_REVIEW";
+    }
+
+    // Notificar admin si transicionó a UNDER_REVIEW (no bloquear respuesta).
+    if (prevStatus !== "UNDER_REVIEW" && newStatus === "UNDER_REVIEW") {
+      try {
+        await sendDocsReceivedToAdmin({
+          companyName: realtor.companyName,
+          companyPhone: realtor.companyPhone ?? "",
+          userEmail: user.email ?? "",
+          realtorId: realtor.id,
+        });
+      } catch (e) {
+        console.error("[documents] notify admin failed:", e);
+      }
     }
 
     return NextResponse.json({ document: doc });
