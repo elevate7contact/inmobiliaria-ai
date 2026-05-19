@@ -89,7 +89,7 @@ export default function SignupPage() {
       });
     }
 
-    router.push(role === "REALTOR" ? "/dashboard" : "/search");
+    router.push(role === "REALTOR" ? "/onboarding" : "/search");
   };
 
   return (
