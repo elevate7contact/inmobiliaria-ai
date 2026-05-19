@@ -7,6 +7,8 @@ import type { NextRequest } from "next/server";
 import { anthropic } from "@/lib/anthropic";
 import { SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import { TOOL_DEFINITIONS, executeTool } from "@/lib/ai/tools";
+import { recallRelevantMessages } from "@/lib/ai/semantic-recall";
+import { validateAssistantResponse } from "@/lib/ai/validator";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { checkChatRateLimit } from "@/lib/rate-limit";
@@ -186,6 +188,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Recall semántico: traer recuerdos relevantes de conversaciones pasadas.
+    if (userId) {
+      const recalled = await recallRelevantMessages(
+        conversation.id,
+        userId,
+        body.message,
+        3
+      );
+      if (recalled.length > 0) {
+        const formatted = recalled
+          .map((r) => {
+            const tag = r.role === "USER" ? "user" : "assistant";
+            const snippet = r.content.length > 200
+              ? r.content.slice(0, 200) + "…"
+              : r.content;
+            return `- [${tag}]: ${snippet}`;
+          })
+          .join("\n");
+        userContext += `\n\n## Recuerdos relevantes de conversaciones pasadas\n${formatted}`;
+      }
+    }
+
     // Construir messages para Anthropic
     const messages: Anthropic.MessageParam[] = [];
     for (const m of previousMessages) {
@@ -315,7 +339,7 @@ export async function POST(req: NextRequest) {
           }
 
           // Persistir respuesta final del asistente
-          await prisma.chatMessage.create({
+          const savedMessage = await prisma.chatMessage.create({
             data: {
               conversationId: conversation.id,
               role: "ASSISTANT",
@@ -325,6 +349,15 @@ export async function POST(req: NextRequest) {
               tokensOut: totalTokensOut,
             },
           });
+
+          // Validador post-respuesta: detecta drift (IDs fantasma, precios/m² sin respaldo).
+          // Solo logea, no bloquea ni modifica la respuesta enviada al usuario.
+          await validateAssistantResponse(
+            finalText,
+            propertyIdsCited,
+            conversation.id,
+            savedMessage.id
+          );
 
           send({
             type: "done",
