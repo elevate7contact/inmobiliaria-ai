@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import DashboardStats from "@/components/realtor/DashboardStats";
+import OnboardingBanner from "@/components/OnboardingBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,58 @@ export default async function DashboardPage() {
 
   const realtor = await prisma.realtorProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true, companyName: true },
+    select: {
+      id: true,
+      companyName: true,
+      companyPhone: true,
+      companyEmail: true,
+      documents: { select: { type: true } },
+    },
   });
 
   const subscription = await prisma.subscription.findUnique({
     where: { userId: user.id },
     select: { plan: true, status: true, propertiesLimit: true },
   });
+
+  // Onboarding progress (mismos 4 steps que /onboarding)
+  const activePropertiesForOnboarding = realtor
+    ? await prisma.property.count({
+        where: { realtorId: realtor.id, status: "ACTIVE" },
+      })
+    : 0;
+
+  const onboardingChecks = [
+    {
+      label: "Perfil de empresa",
+      done: Boolean(
+        realtor &&
+          realtor.companyName &&
+          realtor.companyPhone &&
+          realtor.companyEmail
+      ),
+    },
+    {
+      label: "Documentos de verificación",
+      done:
+        new Set(realtor?.documents.map((d) => d.type) ?? []).size >= 4,
+    },
+    {
+      label: "Suscripción activa",
+      done: subscription?.status === "active",
+    },
+    {
+      label: "Primera propiedad",
+      done: activePropertiesForOnboarding > 0,
+    },
+  ];
+  const onboardingDone = onboardingChecks.filter((c) => c.done).length;
+  const onboardingPercent = Math.round(
+    (onboardingDone / onboardingChecks.length) * 100
+  );
+  const onboardingMissing = onboardingChecks
+    .filter((c) => !c.done)
+    .map((c) => c.label);
 
   let totalProperties = 0;
   let activeProperties = 0;
@@ -88,6 +134,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
+      <OnboardingBanner
+        percentComplete={onboardingPercent}
+        missingSteps={onboardingMissing}
+      />
       <header>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-gray-600">
