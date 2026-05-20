@@ -53,14 +53,18 @@ export async function GET(req: NextRequest) {
       "FALLA · tabla UserPreferenceProfile no existe. " + truncErr(e);
   }
 
-  // 5 · Columna FTS searchVector
+  // 5 · Columna FTS searchVector (vía information_schema — no deserializa el tsvector)
   try {
-    await prisma.$queryRaw`SELECT "searchVector" FROM "ChatMessage" LIMIT 1`;
-    checks.ftsColumn = "OK · columna searchVector existe (recall semántico activo)";
+    const rows = await prisma.$queryRaw<{ exists: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'ChatMessage' AND column_name = 'searchVector'
+      ) AS exists`;
+    checks.ftsColumn = rows[0]?.exists
+      ? "OK · columna searchVector existe (recall semántico activo)"
+      : "FALLA · columna searchVector no existe — la migración chat_message_fts NO corrió";
   } catch (e) {
-    checks.ftsColumn =
-      "FALLA · columna searchVector no existe — la migración chat_message_fts NO corrió. " +
-      truncErr(e);
+    checks.ftsColumn = "FALLA · no se pudo verificar columna FTS. " + truncErr(e);
   }
 
   // 6 · Propiedades disponibles para sugerir
