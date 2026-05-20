@@ -35,15 +35,12 @@ export async function POST(request: Request) {
 
     // 2. Enviar email via Hotmail SMTP (nodemailer)
     const transporter = nodemailer.createTransport({
-      host: "smtp-mail.outlook.com",
-      port: 587,
-      secure: false, // STARTTLS
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // SSL
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
-      },
-      tls: {
-        ciphers: "SSLv3",
       },
     });
 
