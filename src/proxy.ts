@@ -8,8 +8,6 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/update-password",
 ];
-const API_V1_PREFIX = "/api/v1";
-const PUBLIC_API_PREFIX = "/api/auth"; // login, logout, forgot-password — sin sesión requerida
 const REALTOR_ROUTES = ["/dashboard", "/properties", "/subscription", "/analytics", "/api-docs"];
 const ADMIN_ROUTES = ["/admin"];
 
@@ -43,13 +41,10 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // API v1 — autenticada por API key, no por sesión
-  if (pathname.startsWith(API_V1_PREFIX)) {
-    return supabaseResponse;
-  }
-
-  // API de auth — pública (login, logout, forgot-password, etc.)
-  if (pathname.startsWith(PUBLIC_API_PREFIX)) {
+  // Todas las rutas /api/* manejan su propia autenticación y devuelven JSON.
+  // El proxy NUNCA debe redirigir una API route — un redirect rompe los fetch
+  // del cliente (un POST redirigido a /login devuelve 405 → "Se cortó la conexión").
+  if (pathname.startsWith("/api/")) {
     return supabaseResponse;
   }
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "@/components/search/SignOutButton";
+import ChatWidgetLazy from "@/components/chat/ChatWidgetLazy";
 
 export default async function SearcherLayout({
   children,
@@ -44,6 +45,7 @@ export default async function SearcherLayout({
         </div>
       </header>
       <main className="container mx-auto max-w-7xl px-4 py-6">{children}</main>
+      <ChatWidgetLazy />
     </div>
   );
 }
