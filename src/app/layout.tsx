@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
-import ChatWidgetLazy from "@/components/chat/ChatWidgetLazy";
 import "./globals.css";
 
 const geist = Geist({
@@ -23,10 +22,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${geist.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-gray-50">
-        <AuthProvider>
-          {children}
-          <ChatWidgetLazy />
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
