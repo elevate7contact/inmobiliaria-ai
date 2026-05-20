@@ -1,7 +1,13 @@
-// Lógica movida a src/middleware.ts
-// Este archivo se mantiene por compatibilidad con imports existentes.
-export { middleware as proxy, config } from "./middleware";
-et-password", "/update-password"];
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/reset-password",
+  "/update-password",
+];
 const API_V1_PREFIX = "/api/v1";
 const PUBLIC_API_PREFIX = "/api/auth"; // login, logout, forgot-password — sin sesión requerida
 const REALTOR_ROUTES = ["/dashboard", "/properties", "/subscription", "/analytics", "/api-docs"];
