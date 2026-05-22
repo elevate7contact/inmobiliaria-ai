@@ -1,10 +1,14 @@
-import type { User } from "@supabase/supabase-js";
-
 export type UserRole = "SEARCHER" | "REALTOR" | "ADMIN";
 
-export interface AppUser extends User {
+export interface AppUser {
+  id: string;
+  email: string;
   role?: UserRole;
-  name?: string;
+  user_metadata?: {
+    role?: UserRole;
+    name?: string;
+    [key: string]: unknown;
+  };
 }
 
 export interface AuthContextType {
@@ -14,7 +18,6 @@ export interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-// API response helpers
 export interface ApiSuccess<T = unknown> {
   data: T;
   message?: string;

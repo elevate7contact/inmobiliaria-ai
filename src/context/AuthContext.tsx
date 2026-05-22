@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createContext, useContext } from "react";
+import { useUser, useClerk } from "@clerk/nextjs";
 import type { AuthContextType, AppUser, UserRole } from "@/types";
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,54 +12,31 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const { user: clerkUser, isLoaded } = useUser();
+  const { signOut: clerkSignOut } = useClerk();
 
-  const loadUser = useCallback(
-    async (supabaseUser: AppUser | null) => {
-      if (!supabaseUser) {
-        setUser(null);
-        setRole(null);
-        return;
-      }
+  const role = (clerkUser?.publicMetadata?.role as UserRole) ?? null;
 
-      // Obtener rol desde los metadatos del usuario
-      const userRole =
-        (supabaseUser.user_metadata?.role as UserRole) ?? "SEARCHER";
-      setUser({ ...supabaseUser, role: userRole });
-      setRole(userRole);
-    },
-    []
-  );
-
-  useEffect(() => {
-    // Sesión inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      loadUser((session?.user as AppUser) ?? null).finally(() =>
-        setLoading(false)
-      );
-    });
-
-    // Escuchar cambios de auth
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      loadUser((session?.user as AppUser) ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [loadUser, supabase.auth]);
+  const appUser: AppUser | null = clerkUser
+    ? ({
+        id: clerkUser.id,
+        email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+        role,
+        user_metadata: {
+          role,
+          name: clerkUser.fullName ?? "",
+        },
+      } as AppUser)
+    : null;
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setRole(null);
+    await clerkSignOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signOut }}>
+    <AuthContext.Provider
+      value={{ user: appUser, role, loading: !isLoaded, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

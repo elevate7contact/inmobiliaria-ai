@@ -1,10 +1,6 @@
-// src/app/(searcherApp)/layout.tsx
-// Layout para buscadores. Server component. Verifica sesión y renderiza navbar.
-// Si no hay user → redirect a /login (defensa en profundidad; proxy.ts también protege).
-
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { currentUser } from "@clerk/nextjs/server";
 import SignOutButton from "@/components/search/SignOutButton";
 import ChatWidgetLazy from "@/components/chat/ChatWidgetLazy";
 
@@ -13,12 +9,10 @@ export default async function SearcherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await currentUser();
   if (!user) redirect("/login");
+
+  const email = user.primaryEmailAddress?.emailAddress ?? "";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,9 +31,7 @@ export default async function SearcherLayout({
             <Link href="/preferences" className="text-gray-700 hover:text-indigo-600">
               Preferencias
             </Link>
-            <span className="hidden text-xs text-gray-500 sm:inline">
-              {user.email}
-            </span>
+            <span className="hidden text-xs text-gray-500 sm:inline">{email}</span>
             <SignOutButton />
           </nav>
         </div>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { esES } from "@clerk/localizations";
 import { AuthProvider } from "@/context/AuthContext";
+import ChatWidgetLazy from "@/components/chat/ChatWidgetLazy";
 import "./globals.css";
 
 const geist = Geist({
@@ -20,10 +23,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-gray-50">
-        <AuthProvider>{children}</AuthProvider>
-      </body>
-    </html>
+    <ClerkProvider
+      localization={esES}
+      signInUrl="/login"
+      signUpUrl="/signup"
+      signInFallbackRedirectUrl="/auth/redirect"
+      signUpFallbackRedirectUrl="/auth/redirect"
+    >
+      <html lang="es" className={`${geist.variable} h-full antialiased`}>
+        <body className="min-h-full flex flex-col bg-gray-50">
+          <AuthProvider>
+            {children}
+            <ChatWidgetLazy />
+          </AuthProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
